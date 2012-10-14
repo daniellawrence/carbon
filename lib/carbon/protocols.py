@@ -63,9 +63,14 @@ class MetricLineReceiver(MetricReceiver, LineOnlyReceiver):
   def lineReceived(self, line):
     try:
       metric, value, timestamp = line.strip().split()
+    except ValueError as error:
+      log.listener("invalid line '%s' from %s. Format must be 'metric_name metric_value metric_timestamp'" % ( line.strip(), self.peerName))
+      return
+
+    try:
       datapoint = ( float(timestamp), float(value) )
-    except:
-      log.listener('invalid line received from client %s, ignoring' % self.peerName)
+    except ValueError as error:
+      log.listener("invalid line '%s' from %s. Both metric_value and metric_timestamp must be floats" % ( line.strip(), self.peerName))
       return
 
     self.metricReceived(metric, datapoint)
@@ -76,11 +81,17 @@ class MetricDatagramReceiver(MetricReceiver, DatagramProtocol):
     for line in data.splitlines():
       try:
         metric, value, timestamp = line.strip().split()
-        datapoint = ( float(timestamp), float(value) )
-
-        self.metricReceived(metric, datapoint)
       except:
-        log.listener('invalid line received from %s, ignoring' % host)
+        log.listener("invalid line '%s' from %s. Format must be 'metric_name metric_value metric_timestamp'" % ( line.strip(), host))
+        continue
+
+      try:
+        datapoint = ( float(timestamp), float(value) )
+      except ValueError as error:
+        log.listener("invalid line '%s' from %s. Both metric_value and metric_timestamp must be floats" % ( line.strip(), self.peerName))
+        continue
+
+      self.metricReceived(metric, datapoint)
 
 
 class MetricPickleReceiver(MetricReceiver, Int32StringReceiver):
